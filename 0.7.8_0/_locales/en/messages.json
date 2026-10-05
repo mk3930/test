@@ -17,6 +17,9 @@
    "bg_context_5": {
       "message": "Test Right-Click"
    },
+   "bg_context_6": {
+      "message": "Do not activate on this site"
+   },
    "bg_e_1": {
       "message": "Cannot use the following automation rule"
    },
