@@ -15,7 +15,6 @@
 * **user-select.js**: Обход CSS-ограничений (`user-select: none`)
 
 ### 3 Интерфейсы
-* **feedback-popup.js**: Попап "Работает ли расширение?"
 * **options/index.js**: Страница настроек (белый список сайтов)
 
 ---
@@ -40,15 +39,6 @@ if (style['user-select']) {
 ```
 * Патчит CSSRules в реальном времени
 * Отслеживает динамические изменения стилей
-
-### 3. Обратная связь (feedback-popup.js)
-```javascript
-submitFeedback('image', 'Cannot save image as');
-```
-* Иерархическая система отчетов:
-    * Тип проблемы (текст/изображение/видео)
-    * Конкретная причина
-* Отправка данных на clevermathgames.com
 
 ---
 
@@ -75,13 +65,9 @@ submitFeedback('image', 'Cannot save image as');
 1. **Добавление нового типа разблокировки**:  
    `mouse.js` → функция `unblock()`
    
-2. **Кастомизация попапа**:  
-   `feedback-popup.js` → `createFeedbackPopup()`
-
 ---
 
 ## Тестовые сценарии
 
 * **Страница настроек**: `chrome-extension://[id]/data/options/index.html`
-* **Отладка фидбэка**: `debug-feedback.html`
 * **Тестовый сайт**: https://webbrowsertools.com/test-right-click
