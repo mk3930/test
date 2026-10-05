@@ -78,7 +78,7 @@ document.addEventListener('DOMContentLoaded', () => {
       if (lastError) {
         notify(lastError.message);
       } else {
-        notify(granted ? 'Permission removed' : 'Permission removed');
+        notify('Permission removed');
       }
       check();
     });
@@ -132,8 +132,12 @@ function initDebugPanel() {
   document.getElementById('debug-key-select').addEventListener('change', event => {
     const key = event.target.value;
     const editValue = document.getElementById('debug-edit-value');
+    if (!key) {
+      editValue.value = '';
+      return;
+    }
     chrome.storage.local.get(key, data => {
-      editValue.value = key && Object.hasOwn(data, key)
+      editValue.value = Object.prototype.hasOwnProperty.call(data, key)
         ? JSON.stringify(data[key], null, 2)
         : '';
     });
