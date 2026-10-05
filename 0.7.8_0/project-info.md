@@ -5,7 +5,6 @@
 ### 1 Фоновый процесс
 **worker.js** - центральный Service Worker:
 * Управляет внедрением скриптов
-* Контролирует триал-период (7 дней)
 * Обрабатывает межкомпонентные сообщения
 * Запускает попапы обратной связи
 
@@ -14,11 +13,9 @@
 * **core.js**: Инициализация `window.pointers`, координация работы скриптов
 * **mouse.js**: Разблокировка элементов при правом клике/касании
 * **user-select.js**: Обход CSS-ограничений (`user-select: none`)
-* **check-payment.js**: Проверка статуса подписки
 
 ### 3 Интерфейсы
 * **feedback-popup.js**: Попап "Работает ли расширение?"
-* **paywall.html**: Страница оплаты подписки
 * **options/index.js**: Страница настроек (белый список сайтов)
 
 ---
@@ -44,26 +41,7 @@ if (style['user-select']) {
 * Патчит CSSRules в реальном времени
 * Отслеживает динамические изменения стилей
 
-### 3. Проверка подписки (check-payment.js)
-```javascript
-const userData = await paywall.getUser();
-if (userData.paid !== true) {
-  chrome.runtime.sendMessage({method: "openPayWallTab"});
-}
-```
-* Интеграция с платежной системой через `wall.js`
-* Триггер открытия `paywall.html` при отсутствии оплаты
-
-### 4. Триал-период (worker.js)
-```javascript
-isTrialPeriodOver((trialOver) => {
-  if (trialOver) injectPaymentCheck();
-});
-```
-* 7 дней для новых пользователей
-* Старые пользователи (до v3) имеют бессрочный доступ
-
-### 5. Обратная связь (feedback-popup.js)
+### 3. Обратная связь (feedback-popup.js)
 ```javascript
 submitFeedback('image', 'Cannot save image as');
 ```
@@ -97,13 +75,7 @@ submitFeedback('image', 'Cannot save image as');
 1. **Добавление нового типа разблокировки**:  
    `mouse.js` → функция `unblock()`
    
-2. **Изменение триал-периода**:  
-   `worker.js` → `isTrialPeriodOver()` (константа `TRIAL_IN_MS`)
-   
-3. **Настройка платежной интеграции**:  
-   `wall.js` → взаимодействие с API платежной системы
-   
-4. **Кастомизация попапа**:  
+2. **Кастомизация попапа**:  
    `feedback-popup.js` → `createFeedbackPopup()`
 
 ---

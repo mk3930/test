@@ -1,23 +1,180 @@
-self.importScripts('./context.js');const g=id=>chrome.i18n.getMessage(id);const notify=message=>chrome.notifications.create({title:chrome.runtime.getManifest().name,message,type:'basic',iconUrl:'/data/icons/48.png'});function setInstallDate(){const installDate=new Date().getTime();chrome.storage.local.set({installDate:installDate,newUser:true},()=>{console.log('Install date:',installDate,'newUser:',true);});}
-chrome.runtime.onInstalled.addListener((details)=>{if(details.reason===chrome.runtime.OnInstalledReason.INSTALL){setInstallDate();chrome.storage.local.set({popupShowCount:0,hasVoted:false});chrome.tabs.create({url:"http://multiplication-flash-cards.tilda.ws/right-click-enable",});}
-if(details.reason===chrome.runtime.OnInstalledReason.UPDATE){const currentVersion=chrome.runtime.getManifest().version;const previousVersion=details.previousVersion;if(previousVersion!==currentVersion){chrome.storage.local.get('installDate',(data)=>{if(!data.installDate){setInstallDate();}else{console.log('Install date:',data.installDate);}});}}});function formatTimeDifference(diffInMs){const seconds=Math.floor((diffInMs/1000)%60);const minutes=Math.floor((diffInMs/(1000*60))%60);const hours=Math.floor((diffInMs/(1000*60*60))%24);const days=Math.floor(diffInMs/(1000*60*60*24));return`${days}d ${hours}h ${minutes}m ${seconds}s`;}
-chrome.runtime.setUninstallURL('https://clevermathgames.com/right-click-enable-uninstall/',function(){if(chrome.runtime.lastError){console.log(chrome.runtime.lastError);}else{}});function isNotInjected(tabId,callbackNotInjected,callbackInjected){chrome.scripting.executeScript({target:{tabId:tabId},function:checkInjection},(results)=>{if(results&&results[0]){if(results[0].result){callbackInjected();}else{callbackNotInjected();}}});}
-function checkInjection(){return typeof window.isPaywallInjected!=='undefined';}
-let isPaywallGetUserRunning=false;const onClicked=async(tabId,properties={})=>{const g=id=>chrome.i18n.getMessage(id);const notify=message=>chrome.notifications.create({title:chrome.runtime.getManifest().name,message,type:'basic',iconUrl:'/data/icons/48.png'});try{await chrome.scripting.executeScript({target:{tabId,...properties},injectImmediately:true,files:['/data/inject/core.js']}).catch(error=>{console.warn(error);notify(error.message);});const extensionVersion=chrome.runtime.getManifest().version;const extensionName=chrome.runtime.getManifest().name;const data=await chrome.storage.local.get({doNotShowRightClickEnableFeedBackPopup:false,hiddenSites:[]});const tab=await chrome.tabs.get(tabId);const currentUrl=new URL(tab.url).host;if(!data.doNotShowRightClickEnableFeedBackPopup&&!data.hiddenSites.includes(currentUrl))
-{setTimeout(async()=>{try{await chrome.scripting.executeScript({target:{tabId},files:['./feedback-popup.js','./rate-us-popup.js','./instruction-popup.js']});await chrome.scripting.executeScript({target:{tabId},func:(version,name)=>{createFeedbackPopup(version,name);},args:[extensionVersion,extensionName]});}catch(error){console.error('Failed to inject feedback popup:',error);}},2000);}
-const injectionCheck=await chrome.scripting.executeScript({target:{tabId},function:checkInjection});const isAlreadyInjected=injectionCheck?.[0]?.result||false;if(!isAlreadyInjected){const trialOver=await new Promise((resolve)=>{const TRIAL_IN_MS=7*24*60*60*1000;chrome.storage.local.get(['installDate','newUser'],(data)=>{const{installDate,newUser}=data;if(!newUser){resolve(false);return;}
-if(installDate){const currentDate=new Date().getTime();const trialPeriodOver=((currentDate-installDate)>TRIAL_IN_MS);const installDateObj=new Date(installDate);const currentDateObj=new Date(currentDate);console.log('isTrialPeriodOver: ','trialPeriodOver:',trialPeriodOver,'currentDate:',currentDateObj.toLocaleString(),'installDate:',installDateObj.toLocaleString(),'Time difference:',formatTimeDifference(currentDate-installDate));resolve(trialPeriodOver);}else{setInstallDate();resolve(false);}});});if(trialOver&&!isPaywallGetUserRunning){isPaywallGetUserRunning=true;try{await chrome.scripting.executeScript({target:{tabId,...properties,allFrames:false},injectImmediately:true,files:['wall.2.1.3.js','/data/inject/check-payment.js']});}catch(error){console.warn(error);notify(error.message);isPaywallGetUserRunning=false;}}}else{if(!isPaywallGetUserRunning){isPaywallGetUserRunning=true;try{await chrome.scripting.executeScript({target:{tabId},function:()=>{checkPayment();}});}catch(error){console.warn(error);notify(error.message);isPaywallGetUserRunning=false;}}}}catch(error){console.error('Error in onClicked:',error);}};chrome.action.onClicked.addListener(tab=>onClicked(tab.id,{allFrames:true}));chrome.runtime.onMessage.addListener((request,sender,response)=>{if(request.method==='status'){chrome.scripting.executeScript({target:{tabId:sender.tab.id},func:()=>window.pointers.status},r=>response(r[0]?.result));return true;}
-else if(request.method==='inject'){if(sender.frameId===0){chrome.action.setIcon({tabId:sender.tab.id,path:{'16':'/data/icons/active/16.png','32':'/data/icons/active/32.png','48':'/data/icons/active/48.png'}});}
-for(const file of request.files){chrome.scripting.executeScript({target:{tabId:sender.tab.id,frameIds:[sender.frameId]},injectImmediately:true,files:['/data/inject/'+file]});}}
-else if(request.method==='release'){if(sender.frameId===0){chrome.action.setIcon({tabId:sender.tab.id,path:{'16':'/data/icons/16.png','32':'/data/icons/32.png','48':'/data/icons/48.png'}});}}
-else if(request.method==='inject-unprotected'){chrome.scripting.executeScript({target:{tabId:sender.tab.id,frameIds:[sender.frameId]},injectImmediately:true,func:code=>{const script=document.createElement('script');script.classList.add('arclck');script.textContent='document.currentScript.dataset.injected = true;'+code;document.documentElement.appendChild(script);if(script.dataset.injected!=='true'){const s=document.createElement('script');s.classList.add('arclck');s.src='data:text/javascript;charset=utf-8;base64,'+btoa(code);document.documentElement.appendChild(s);script.remove();}},args:[request.code],world:'MAIN'});}
-else if(request.method==='simulate-click'){onClicked(sender.tab.id,{frameIds:[sender.frameId]});}
-else if(request.method==="openPayWallTab"){onClicked(sender.tab.id,{frameIds:[sender.frameId]});chrome.tabs.create({'url':chrome.runtime.getURL('paywall.html')},(newTab)=>{console.log("New tab opened with ID:",newTab.id);});}
-else if(request.method==="paywall-getuser-completed"){isPaywallGetUserRunning=false;}});{const observe=()=>chrome.storage.local.get({monitor:false,hostnames:[]},async prefs=>{await chrome.scripting.unregisterContentScripts();if(prefs.monitor&&prefs.hostnames.length){const matches=new Set();for(const hostname of prefs.hostnames){if(hostname.includes('*')){matches.add(hostname);}
-else{matches.add(hostname);matches.add(hostname);}}
-for(let m of matches){if(m.includes(':')===false){m='*://'+m;}
-if(m.endsWith('*')===false){if(m.endsWith('/')){m+='*';}
-else{m+='/*';}}
-const id=(Math.random()+1).toString(36).substring(7);chrome.scripting.registerContentScripts([{allFrames:true,matchOriginAsFallback:true,runAt:'document_start',id:'monitor-'+id,js:['/data/monitor.js'],matches:[m]}]).catch(e=>{console.error(e);notify(g('bg_e_1')+`: ${m}:`+e.message);});}}});observe();chrome.storage.onChanged.addListener(prefs=>{if((prefs.monitor&&prefs.monitor.newValue!==prefs.monitor.oldValue)||(prefs.hostnames&&prefs.hostnames.newValue!==prefs.hostnames.oldValue)){observe();}
-if(prefs.monitor){permission();}});}
-const permission=()=>chrome.permissions.contains({origins:["http://*/*","https://*/*"]},granted=>{chrome.contextMenus.update('inject-sub',{enabled:granted===false,title:g('bg_context_1')+(granted?' '+g('bg_context_2'):'')});});
+self.importScripts('./context.js');
+
+const g = id => chrome.i18n.getMessage(id);
+const notify = message => chrome.notifications.create({
+  title: chrome.runtime.getManifest().name,
+  message,
+  type: 'basic',
+  iconUrl: '/data/icons/48.png'
+});
+
+chrome.runtime.onInstalled.addListener(details => {
+  if (details.reason === chrome.runtime.OnInstalledReason.INSTALL) {
+    chrome.storage.local.set({ popupShowCount: 0, hasVoted: false });
+    chrome.tabs.create({ url: 'http://multiplication-flash-cards.tilda.ws/right-click-enable' });
+  }
+});
+
+chrome.runtime.setUninstallURL('https://clevermathgames.com/right-click-enable-uninstall/', () => {
+  if (chrome.runtime.lastError) {
+    console.log(chrome.runtime.lastError);
+  }
+});
+
+const onClicked = async (tabId, properties = {}) => {
+  try {
+    await chrome.scripting.executeScript({
+      target: { tabId, ...properties },
+      injectImmediately: true,
+      files: ['/data/inject/core.js']
+    }).catch(error => {
+      console.warn(error);
+      notify(error.message);
+    });
+
+    const extensionVersion = chrome.runtime.getManifest().version;
+    const extensionName = chrome.runtime.getManifest().name;
+    const data = await chrome.storage.local.get({
+      doNotShowRightClickEnableFeedBackPopup: false,
+      hiddenSites: []
+    });
+    const tab = await chrome.tabs.get(tabId);
+    const currentUrl = new URL(tab.url).host;
+
+    if (!data.doNotShowRightClickEnableFeedBackPopup && !data.hiddenSites.includes(currentUrl)) {
+      setTimeout(async () => {
+        try {
+          await chrome.scripting.executeScript({
+            target: { tabId },
+            files: ['./feedback-popup.js', './rate-us-popup.js', './instruction-popup.js']
+          });
+          await chrome.scripting.executeScript({
+            target: { tabId },
+            func: (version, name) => createFeedbackPopup(version, name),
+            args: [extensionVersion, extensionName]
+          });
+        } catch (error) {
+          console.error('Failed to inject feedback popup:', error);
+        }
+      }, 2000);
+    }
+  } catch (error) {
+    console.error('Error in onClicked:', error);
+  }
+};
+
+chrome.action.onClicked.addListener(tab => onClicked(tab.id, { allFrames: true }));
+
+chrome.runtime.onMessage.addListener((request, sender, response) => {
+  if (request.method === 'status') {
+    chrome.scripting.executeScript({
+      target: { tabId: sender.tab.id },
+      func: () => window.pointers.status
+    }, results => response(results[0]?.result));
+    return true;
+  }
+
+  if (request.method === 'inject') {
+    if (sender.frameId === 0) {
+      chrome.action.setIcon({
+        tabId: sender.tab.id,
+        path: {
+          '16': '/data/icons/active/16.png',
+          '32': '/data/icons/active/32.png',
+          '48': '/data/icons/active/48.png'
+        }
+      });
+    }
+    for (const file of request.files) {
+      chrome.scripting.executeScript({
+        target: { tabId: sender.tab.id, frameIds: [sender.frameId] },
+        injectImmediately: true,
+        files: ['/data/inject/' + file]
+      });
+    }
+  } else if (request.method === 'release') {
+    if (sender.frameId === 0) {
+      chrome.action.setIcon({
+        tabId: sender.tab.id,
+        path: {
+          '16': '/data/icons/16.png',
+          '32': '/data/icons/32.png',
+          '48': '/data/icons/48.png'
+        }
+      });
+    }
+  } else if (request.method === 'inject-unprotected') {
+    chrome.scripting.executeScript({
+      target: { tabId: sender.tab.id, frameIds: [sender.frameId] },
+      injectImmediately: true,
+      func: code => {
+        const script = document.createElement('script');
+        script.classList.add('arclck');
+        script.textContent = 'document.currentScript.dataset.injected = true;' + code;
+        document.documentElement.appendChild(script);
+        if (script.dataset.injected !== 'true') {
+          const fallback = document.createElement('script');
+          fallback.classList.add('arclck');
+          fallback.src = 'data:text/javascript;charset=utf-8;base64,' + btoa(code);
+          document.documentElement.appendChild(fallback);
+          script.remove();
+        }
+      },
+      args: [request.code],
+      world: 'MAIN'
+    });
+  } else if (request.method === 'simulate-click') {
+    onClicked(sender.tab.id, { frameIds: [sender.frameId] });
+  }
+});
+
+{
+  const observe = () => chrome.storage.local.get({ monitor: false, hostnames: [] }, async prefs => {
+    await chrome.scripting.unregisterContentScripts();
+    if (prefs.monitor && prefs.hostnames.length) {
+      const matches = new Set();
+      for (const hostname of prefs.hostnames) {
+        matches.add(hostname);
+      }
+      for (let match of matches) {
+        if (!match.includes(':')) {
+          match = '*://' + match;
+        }
+        if (!match.endsWith('*')) {
+          match += match.endsWith('/') ? '*' : '/*';
+        }
+        const id = (Math.random() + 1).toString(36).substring(7);
+        chrome.scripting.registerContentScripts([{
+          allFrames: true,
+          matchOriginAsFallback: true,
+          runAt: 'document_start',
+          id: 'monitor-' + id,
+          js: ['/data/monitor.js'],
+          matches: [match]
+        }]).catch(error => {
+          console.error(error);
+          notify(g('bg_e_1') + `: ${match}:` + error.message);
+        });
+      }
+    }
+  });
+  observe();
+  chrome.storage.onChanged.addListener(prefs => {
+    if ((prefs.monitor && prefs.monitor.newValue !== prefs.monitor.oldValue) ||
+        (prefs.hostnames && prefs.hostnames.newValue !== prefs.hostnames.oldValue)) {
+      observe();
+    }
+    if (prefs.monitor) {
+      permission();
+    }
+  });
+}
+
+const permission = () => chrome.permissions.contains({
+  origins: ['http://*/*', 'https://*/*']
+}, granted => {
+  chrome.contextMenus.update('inject-sub', {
+    enabled: granted === false,
+    title: g('bg_context_1') + (granted ? ' ' + g('bg_context_2') : '')
+  });
+});
