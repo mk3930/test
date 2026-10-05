@@ -1,0 +1,295 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Debug Feedback Popup</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            padding: 20px;
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+        .controls {
+            background: #f5f5f5;
+            padding: 20px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+        }
+        .debug-info {
+            background: #e8f4fd;
+            padding: 15px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+            border-left: 4px solid #2196F3;
+        }
+        button {
+            margin: 5px;
+            padding: 10px 15px;
+            background: #4CAF50;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+        }
+        button:hover {
+            background: #45a049;
+        }
+        .status {
+            padding: 10px;
+            margin: 10px 0;
+            border-radius: 4px;
+        }
+        .success {
+            background: #d4edda;
+            color: #155724;
+        }
+        .error {
+            background: #f8d7da;
+            color: #721c24;
+        }
+        .info {
+            background: #d1ecf1;
+            color: #0c5460;
+        }
+        .log-area {
+            width: 100%;
+            height: 200px;
+            font-family: monospace;
+            font-size: 12px;
+            margin-top: 10px;
+        }
+    </style>
+</head>
+<body>
+    <h1>Debug Original Feedback Popup</h1>
+    
+    <div class="debug-info">
+        <h3>Инструкция:</h3>
+        <p>Эта страница использует <strong>оригинальный feedback-popup.js</strong> с поддержкой отладочного режима.</p>
+        <p><strong>Статус:</strong> <span id="status" class="status info">Готов к отладке</span></p>
+    </div>
+    
+    <div class="controls">
+        <h3>Настройки теста:</h3>
+        <div>
+            <label for="mockUrl">URL страницы для теста:</label><br>
+            <input type="text" id="mockUrl" value="https://example.com/test-page" style="width: 300px;">
+        </div>
+        <div>
+            <label for="extensionVersion">Версия расширения:</label><br>
+            <input type="text" id="extensionVersion" value="3.0.0" style="width: 300px;">
+        </div>
+        <div>
+            <label for="extensionName">Название расширения:</label><br>
+            <input type="text" id="extensionName" value="Right Click Enable" style="width: 300px;">
+        </div>
+        
+        <div style="margin-top: 20px;">
+            <button id="createPopup">Create Feedback Popup (с debugger)</button>
+            <button id="createPopupNoDebug">Create Feedback Popup (без debugger)</button>
+            <button id="clearStorage">Clear Mock Storage</button>
+        </div>
+        
+        <div style="margin-top: 20px;">
+            <label>
+                <input type="checkbox" id="autoClose" checked>
+                Авто-закрытие через 60 секунд (вместо 30)
+            </label>
+        </div>
+    </div>
+    
+    <div style="margin-top: 30px;">
+        <h3>Логирование консоли:</h3>
+        <textarea id="consoleLog" class="log-area" readonly></textarea>
+    </div>
+
+    <script>
+        // Перехватываем console.log, console.error и console.warn
+        const originalConsole = {
+            log: console.log,
+            error: console.error,
+            warn: console.warn,
+            info: console.info
+        };
+        
+        const consoleLog = document.getElementById('consoleLog');
+        
+        function addToLog(type, args) {
+            const timestamp = new Date().toLocaleTimeString();
+            const message = Array.from(args).map(arg => 
+                typeof arg === 'object' ? JSON.stringify(arg, null, 2) : String(arg)
+            ).join(' ');
+            
+            consoleLog.value += `[${timestamp}] [${type.toUpperCase()}] ${message}\n`;
+            consoleLog.scrollTop = consoleLog.scrollHeight;
+            
+            // Также выводим в оригинальную консоль
+            originalConsole[type].apply(console, args);
+        }
+        
+        console.log = function(...args) { addToLog('log', args); };
+        console.error = function(...args) { addToLog('error', args); };
+        console.warn = function(...args) { addToLog('warn', args); };
+        console.info = function(...args) { addToLog('info', args); };
+        
+        function updateStatus(message, type = 'info') {
+            const statusEl = document.getElementById('status');
+            statusEl.textContent = message;
+            statusEl.className = `status ${type}`;
+        }
+        
+        // Мокаем chrome.storage.local
+        const mockStorage = {
+            data: {
+                hiddenSites: [],
+                doNotShowRightClickEnableFeedBackPopup: false
+            },
+            
+            get: function(keys, callback) {
+                console.log('chrome.storage.local.get:', keys);
+                const result = {};
+                
+                if (typeof keys === 'object') {
+                    Object.keys(keys).forEach(key => {
+                        result[key] = this.data[key] !== undefined ? this.data[key] : keys[key];
+                    });
+                }
+                
+                setTimeout(() => {
+                    if (callback) callback(result);
+                }, 0);
+            },
+            
+            set: function(items, callback) {
+                console.log('chrome.storage.local.set:', items);
+                Object.assign(this.data, items);
+                
+                setTimeout(() => {
+                    if (callback) callback();
+                    console.log('Текущее состояние хранилища:', this.data);
+                }, 0);
+            },
+            
+            clear: function() {
+                this.data = {
+                    hiddenSites: [],
+                    doNotShowRightClickEnableFeedBackPopup: false
+                };
+                console.log('Хранилище очищено');
+                updateStatus('Хранилище очищено', 'success');
+            }
+        };
+        
+        // Мокаем chrome.runtime
+        const mockRuntime = {
+            getManifest: function() {
+                return {
+                    version: document.getElementById('extensionVersion').value,
+                    name: document.getElementById('extensionName').value
+                };
+            }
+        };
+        
+        // Мокаем chrome.storage (должен быть доступен глобально)
+        window.chrome = {
+            storage: {
+                local: mockStorage
+            },
+            runtime: mockRuntime
+        };
+        
+        // Мокаем fetch
+        const originalFetch = window.fetch;
+        window.fetch = function(url, options) {
+            console.log('fetch вызван:', { url, method: options?.method, body: options?.body });
+            
+            if (url.includes('clevermathgames.com')) {
+                console.log('Мокаем отправку фидбека на:', url);
+                
+                // Возвращаем успешный промис
+                return Promise.resolve({
+                    ok: true,
+                    status: 200,
+                    json: () => Promise.resolve({ 
+                        success: true, 
+                        message: 'Feedback received (debug mode)' 
+                    })
+                });
+            }
+            
+            // Для других URL используем оригинальный fetch
+            return originalFetch(url, options);
+        };
+        
+        // Мокаем createRatePopup
+        window.createRatePopup = function(extensionVersion, extensionName) {
+            console.log('createRatePopup вызвана с:', { extensionVersion, extensionName });
+            alert(`Rate popup был бы открыт для ${extensionName} v${extensionVersion}\n\n(В отладке показываем alert)`);
+        };
+        
+        // Обработчики кнопок
+        document.getElementById('createPopup').addEventListener('click', function() {
+            console.log('=== СОЗДАНИЕ FEEDBACK POPUP (с debugger) ===');
+            
+            // Останавливаем выполнение для отладки
+            // debugger;
+            
+            const extensionVersion = document.getElementById('extensionVersion').value;
+            const extensionName = document.getElementById('extensionName').value;
+            const mockUrl = document.getElementById('mockUrl').value;
+            
+            // Вызываем оригинальную функцию с тремя параметрами
+            createFeedbackPopup(extensionVersion, extensionName, mockUrl);
+            
+            updateStatus('Feedback popup создан', 'success');
+            
+            // Увеличиваем время авто-закрытия для отладки
+            if (document.getElementById('autoClose').checked) {
+                console.log('Авто-закрытие через 60 секунд (вместо 30)');
+            }
+        });
+        
+        document.getElementById('createPopupNoDebug').addEventListener('click', function() {
+            console.log('=== СОЗДАНИЕ FEEDBACK POPUP (без debugger) ===');
+            
+            const extensionVersion = document.getElementById('extensionVersion').value;
+            const extensionName = document.getElementById('extensionName').value;
+            const mockUrl = document.getElementById('mockUrl').value;
+            
+            createFeedbackPopup(extensionVersion, extensionName, mockUrl);
+            updateStatus('Feedback popup создан', 'success');
+        });
+        
+        document.getElementById('clearStorage').addEventListener('click', function() {
+            mockStorage.clear();
+        });
+        
+        // Инициализация
+        console.log('Отладочная среда инициализирована');
+        console.log('Моки установлены: chrome.storage, chrome.runtime, fetch, createRatePopup');
+        updateStatus('Готово. Используется ОРИГИНАЛЬНЫЙ feedback-popup.js', 'success');
+        
+        // Делаем объекты доступными глобально для отладки в консоли
+        window.debugEnv = {
+            storage: mockStorage,
+            runtime: mockRuntime,
+            clearConsole: function() {
+                consoleLog.value = '';
+            },
+            showStorage: function() {
+                console.log('Текущее состояние хранилища:', mockStorage.data);
+            }
+        };
+        
+        console.log('Для отладки в консоли используйте:');
+        console.log('- debugEnv.showStorage() - показать состояние хранилища');
+        console.log('- debugEnv.clearConsole() - очистить лог');
+        console.log('- debugEnv.storage.data - доступ к данным хранилища');
+    </script>
+    
+    <!-- Подключаем ОРИГИНАЛЬНЫЙ feedback-popup.js с поддержкой отладочного режима -->
+    <script src="feedback-popup.js"></script>
+</body>
+</html>

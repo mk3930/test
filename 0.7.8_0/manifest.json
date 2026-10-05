@@ -1,0 +1,36 @@
+{
+   "action": {
+   },
+   "background": {
+      "service_worker": "worker.js"
+   },
+   "commands": {
+      "_execute_action": {
+      }
+   },
+   "default_locale": "en",
+   "description": "__MSG_shortDesc__",
+   "host_permissions": [ "http://*/*", "https://*/*" ],
+   "icons": {
+      "128": "/data/icons/128.png",
+      "16": "/data/icons/16.png",
+      "256": "/data/icons/256.png",
+      "32": "/data/icons/32.png",
+      "48": "/data/icons/48.png",
+      "64": "/data/icons/64.png"
+   },
+   "key": "MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEAvttYy6kfsGXj8nawyWeA93JKvsmM983cwHuGe2B2qTI33LwEoA4syZFdi1kWbkYc0zcoAd/dtyUgjHlYov0/4R6qqvZIMJaxdBaqkc2YP7vnLeFj3eT+rYQFZ+fBCoiddYMX+Kb1jvegTJlFUAum/IXUE8KUyV9w1D9QqwvXLMQa3w2igDihuUhNpeTMxeTEwWIL6LN65VwATKoMzywcjUzNDAzyvbKPx05REaa5BhAncO8QfZm2MieImDesP3ggH0eJFsbYgxDmwZWx+AI7jKLPG1qkfah6DhQmOz64Fbrh1tTXoS10lU8hvkNh9tAhBABj8B/kb04Om9PdpFrOgwIDAQAB",
+   "manifest_version": 3,
+   "name": "__MSG_appName__",
+   "options_ui": {
+      "open_in_tab": true,
+      "page": "/data/options/index.html"
+   },
+   "permissions": [ "storage", "activeTab", "scripting", "contextMenus", "notifications" ],
+   "update_url": "https://clients2.google.com/service/update2/crx",
+   "version": "0.7.8",
+   "web_accessible_resources": [ {
+      "matches": [ "\u003Call_urls>" ],
+      "resources": [ "right-click.png" ]
+   } ]
+}
