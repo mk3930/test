@@ -26,7 +26,18 @@ const setIcon = enabled => chrome.action.setIcon({
   }
 });
 
-const applyToTab = async (tabId, enabled) => {
+const applyToTab = async (tabId, enabled, excludedHostnames) => {
+  if (!excludedHostnames) {
+    ({ excludedHostnames = [] } = await chrome.storage.local.get({ excludedHostnames: [] }));
+  }
+  const tab = await chrome.tabs.get(tabId);
+  let hostname = '';
+  try {
+    hostname = new URL(tab.url).hostname;
+  } catch (error) {
+    hostname = '';
+  }
+  enabled = enabled && !excludedHostnames.includes(hostname);
   await chrome.scripting.executeScript({
     target: { tabId, allFrames: true },
     func: target => {
@@ -42,8 +53,11 @@ const applyToTab = async (tabId, enabled) => {
 };
 
 const applyToAllTabs = async enabled => {
-  const tabs = await chrome.tabs.query({});
-  await Promise.allSettled(tabs.map(tab => applyToTab(tab.id, enabled)));
+  const [{ excludedHostnames = [] }, tabs] = await Promise.all([
+    chrome.storage.local.get({ excludedHostnames: [] }),
+    chrome.tabs.query({})
+  ]);
+  await Promise.allSettled(tabs.map(tab => applyToTab(tab.id, enabled, excludedHostnames)));
 };
 
 const syncGlobalState = async () => {
@@ -56,9 +70,19 @@ chrome.runtime.onStartup.addListener(syncGlobalState);
 chrome.storage.local.get({ enabled: false }, ({ enabled }) => setIcon(enabled));
 chrome.tabs.onUpdated.addListener((tabId, changeInfo) => {
   if (changeInfo.status === 'complete') {
+    chrome.storage.local.get({ enabled: false, excludedHostnames: [] }, ({ enabled, excludedHostnames }) => {
+      if (enabled) {
+        applyToTab(tabId, true, excludedHostnames).catch(() => {});
+      }
+    });
+  }
+});
+
+chrome.storage.onChanged.addListener((changes, areaName) => {
+  if (areaName === 'local' && changes.excludedHostnames) {
     chrome.storage.local.get({ enabled: false }, ({ enabled }) => {
       if (enabled) {
-        applyToTab(tabId, true).catch(() => {});
+        applyToAllTabs(true);
       }
     });
   }
