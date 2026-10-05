@@ -10,7 +10,6 @@ const notify = message => chrome.notifications.create({
 
 chrome.runtime.onInstalled.addListener(details => {
   if (details.reason === chrome.runtime.OnInstalledReason.INSTALL) {
-    chrome.storage.local.set({ popupShowCount: 0, hasVoted: false });
     chrome.tabs.create({ url: 'http://multiplication-flash-cards.tilda.ws/right-click-enable' });
   }
 });
@@ -32,32 +31,6 @@ const onClicked = async (tabId, properties = {}) => {
       notify(error.message);
     });
 
-    const extensionVersion = chrome.runtime.getManifest().version;
-    const extensionName = chrome.runtime.getManifest().name;
-    const data = await chrome.storage.local.get({
-      doNotShowRightClickEnableFeedBackPopup: false,
-      hiddenSites: []
-    });
-    const tab = await chrome.tabs.get(tabId);
-    const currentUrl = new URL(tab.url).host;
-
-    if (!data.doNotShowRightClickEnableFeedBackPopup && !data.hiddenSites.includes(currentUrl)) {
-      setTimeout(async () => {
-        try {
-          await chrome.scripting.executeScript({
-            target: { tabId },
-            files: ['./feedback-popup.js', './rate-us-popup.js', './instruction-popup.js']
-          });
-          await chrome.scripting.executeScript({
-            target: { tabId },
-            func: (version, name) => createFeedbackPopup(version, name),
-            args: [extensionVersion, extensionName]
-          });
-        } catch (error) {
-          console.error('Failed to inject feedback popup:', error);
-        }
-      }, 2000);
-    }
   } catch (error) {
     console.error('Error in onClicked:', error);
   }
