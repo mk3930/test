@@ -1,8 +1,43 @@
-window.pointers=window.pointers||{run:new Set(),cache:new Map(),status:''};window.pointers.record=(e,name,value)=>{window.pointers.cache.set(e,{name,value});};window.pointers.inject=code=>chrome.runtime.sendMessage({method:'inject-unprotected',code});{const next=()=>{if(window.pointers.status===''||window.pointers.status==='removed'){window.pointers.status='ready';for(const script of[...document.querySelectorAll('script.arclck')]){script.dispatchEvent(new Event('install'));}
-chrome.runtime.sendMessage({method:'inject',files:['user-select.js','styles.js','mouse.js','listen.js']});const url=window.location.href;if(url.startsWith('http')){const{hostname}=new URL(url);chrome.storage.local.get({hostnames:[]},prefs=>{chrome.storage.local.set({hostnames:[...prefs.hostnames,hostname].filter((s,i,l)=>s&&l.indexOf(s)===i)});});}}
-else{window.pointers.status='removed';chrome.runtime.sendMessage({method:'release'});for(const c of window.pointers.run){c();}
-window.pointers.run=new Set();for(const script of[...document.querySelectorAll('script.arclck')]){script.dispatchEvent(new Event('remove'));}
-for(const[e,{name,value}]of window.pointers.cache){e.style[name]=value;}
-window.pointers.cache=new Set();const url=window.location.href;if(url.startsWith('http')){const{hostname}=new URL(url);chrome.storage.local.get({hostnames:[]},prefs=>{const newHostnames=prefs.hostnames.filter(h=>h!==hostname);chrome.storage.local.set({hostnames:newHostnames});});}}};if(window.top===window){next();}
-else{chrome.runtime.sendMessage({method:'status'},resp=>{if(resp==='removed'&&window.pointers.status===''){window.pointers.status='ready';}
-next();});}}
+window.pointers = window.pointers || {};
+window.pointers.run = window.pointers.run instanceof Set ? window.pointers.run : new Set();
+window.pointers.cache = window.pointers.cache instanceof Map ? window.pointers.cache : new Map();
+window.pointers.status = window.pointers.status || '';
+window.pointers.record = (element, name, value) => {
+  window.pointers.cache.set(element, { name, value });
+};
+window.pointers.inject = code => chrome.runtime.sendMessage({ method: 'inject-unprotected', code });
+
+const setEnabled = enabled => {
+  if ((window.pointers.status === 'ready') === enabled) {
+    return;
+  }
+
+  if (enabled) {
+    window.pointers.status = 'ready';
+    for (const script of document.querySelectorAll('script.arclck')) {
+      script.dispatchEvent(new Event('install'));
+    }
+    chrome.runtime.sendMessage({
+      method: 'inject',
+      files: ['user-select.js', 'styles.js', 'mouse.js', 'listen.js']
+    });
+    return;
+  }
+
+  window.pointers.status = 'removed';
+  for (const cleanup of window.pointers.run) {
+    cleanup();
+  }
+  window.pointers.run = new Set();
+  for (const script of document.querySelectorAll('script.arclck')) {
+    script.dispatchEvent(new Event('remove'));
+  }
+  for (const [element, { name, value }] of window.pointers.cache) {
+    element.style[name] = value;
+  }
+  window.pointers.cache = new Map();
+};
+
+const target = window.__rightClickEnableTarget;
+delete window.__rightClickEnableTarget;
+setEnabled(typeof target === 'boolean' ? target : window.pointers.status !== 'ready');

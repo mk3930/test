@@ -10,8 +10,57 @@ const notify = message => chrome.notifications.create({
 
 chrome.runtime.onInstalled.addListener(details => {
   if (details.reason === chrome.runtime.OnInstalledReason.INSTALL) {
-    chrome.storage.local.set({ popupShowCount: 0, hasVoted: false });
     chrome.tabs.create({ url: 'http://multiplication-flash-cards.tilda.ws/right-click-enable' });
+  }
+});
+
+const setIcon = enabled => chrome.action.setIcon({
+  path: enabled ? {
+    '16': '/data/icons/active/16.png',
+    '32': '/data/icons/active/32.png',
+    '48': '/data/icons/active/48.png'
+  } : {
+    '16': '/data/icons/16.png',
+    '32': '/data/icons/32.png',
+    '48': '/data/icons/48.png'
+  }
+});
+
+const applyToTab = async (tabId, enabled) => {
+  await chrome.scripting.executeScript({
+    target: { tabId, allFrames: true },
+    func: target => {
+      window.__rightClickEnableTarget = target;
+    },
+    args: [enabled]
+  });
+  await chrome.scripting.executeScript({
+    target: { tabId, allFrames: true },
+    injectImmediately: true,
+    files: ['/data/inject/core.js']
+  });
+};
+
+const applyToAllTabs = async enabled => {
+  const tabs = await chrome.tabs.query({});
+  await Promise.allSettled(tabs.map(tab => applyToTab(tab.id, enabled)));
+};
+
+const syncGlobalState = async () => {
+  const { enabled = false } = await chrome.storage.local.get({ enabled: false });
+  setIcon(enabled);
+  await applyToAllTabs(enabled);
+};
+
+chrome.runtime.onStartup.addListener(syncGlobalState);
+chrome.storage.local.get({ enabled: false }, ({ enabled }) => setIcon(enabled));
+chrome.tabs.onUpdated.addListener((tabId, changeInfo) => {
+  if (changeInfo.status === 'complete') {
+    chrome.storage.local.get({ enabled: false }, ({ enabled }) => {
+      if (enabled) {
+        applyToTab(tabId, true).catch(() => {});
+      }
+    });
   }
 });
 
@@ -21,49 +70,19 @@ chrome.runtime.setUninstallURL('https://clevermathgames.com/right-click-enable-u
   }
 });
 
-const onClicked = async (tabId, properties = {}) => {
+const toggleGlobalState = async () => {
   try {
-    await chrome.scripting.executeScript({
-      target: { tabId, ...properties },
-      injectImmediately: true,
-      files: ['/data/inject/core.js']
-    }).catch(error => {
-      console.warn(error);
-      notify(error.message);
-    });
-
-    const extensionVersion = chrome.runtime.getManifest().version;
-    const extensionName = chrome.runtime.getManifest().name;
-    const data = await chrome.storage.local.get({
-      doNotShowRightClickEnableFeedBackPopup: false,
-      hiddenSites: []
-    });
-    const tab = await chrome.tabs.get(tabId);
-    const currentUrl = new URL(tab.url).host;
-
-    if (!data.doNotShowRightClickEnableFeedBackPopup && !data.hiddenSites.includes(currentUrl)) {
-      setTimeout(async () => {
-        try {
-          await chrome.scripting.executeScript({
-            target: { tabId },
-            files: ['./feedback-popup.js', './rate-us-popup.js', './instruction-popup.js']
-          });
-          await chrome.scripting.executeScript({
-            target: { tabId },
-            func: (version, name) => createFeedbackPopup(version, name),
-            args: [extensionVersion, extensionName]
-          });
-        } catch (error) {
-          console.error('Failed to inject feedback popup:', error);
-        }
-      }, 2000);
-    }
+    const { enabled = false } = await chrome.storage.local.get({ enabled: false });
+    const nextEnabled = !enabled;
+    await chrome.storage.local.set({ enabled: nextEnabled });
+    setIcon(nextEnabled);
+    await applyToAllTabs(nextEnabled);
   } catch (error) {
-    console.error('Error in onClicked:', error);
+    console.error('Error toggling extension:', error);
   }
 };
 
-chrome.action.onClicked.addListener(tab => onClicked(tab.id, { allFrames: true }));
+chrome.action.onClicked.addListener(toggleGlobalState);
 
 chrome.runtime.onMessage.addListener((request, sender, response) => {
   if (request.method === 'status') {
@@ -75,32 +94,11 @@ chrome.runtime.onMessage.addListener((request, sender, response) => {
   }
 
   if (request.method === 'inject') {
-    if (sender.frameId === 0) {
-      chrome.action.setIcon({
-        tabId: sender.tab.id,
-        path: {
-          '16': '/data/icons/active/16.png',
-          '32': '/data/icons/active/32.png',
-          '48': '/data/icons/active/48.png'
-        }
-      });
-    }
     for (const file of request.files) {
       chrome.scripting.executeScript({
         target: { tabId: sender.tab.id, frameIds: [sender.frameId] },
         injectImmediately: true,
         files: ['/data/inject/' + file]
-      });
-    }
-  } else if (request.method === 'release') {
-    if (sender.frameId === 0) {
-      chrome.action.setIcon({
-        tabId: sender.tab.id,
-        path: {
-          '16': '/data/icons/16.png',
-          '32': '/data/icons/32.png',
-          '48': '/data/icons/48.png'
-        }
       });
     }
   } else if (request.method === 'inject-unprotected') {
@@ -124,7 +122,7 @@ chrome.runtime.onMessage.addListener((request, sender, response) => {
       world: 'MAIN'
     });
   } else if (request.method === 'simulate-click') {
-    onClicked(sender.tab.id, { frameIds: [sender.frameId] });
+    applyToTab(sender.tab.id, true).catch(error => console.warn(error));
   }
 });
 
