@@ -49,9 +49,7 @@ const applyToAllTabs = async enabled => {
 const syncGlobalState = async () => {
   const { enabled = false } = await chrome.storage.local.get({ enabled: false });
   setIcon(enabled);
-  if (enabled) {
-    await applyToAllTabs(true);
-  }
+  await applyToAllTabs(enabled);
 };
 
 chrome.runtime.onStartup.addListener(syncGlobalState);
