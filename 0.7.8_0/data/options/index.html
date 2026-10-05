@@ -33,7 +33,7 @@ http://example.com
     <span id="toast"></span>
   </p>
 
-  <!-- Отладочная панель для управления настройками платежей -->
+  <!-- Отладочная панель для локальной установки -->
 <div id="debug-panel" style="display: none; margin-top: 30px; padding: 20px; background: #f5f5f5; border-radius: 8px; border: 1px solid #ddd;">
   <h3 style="color: #d32f2f; margin-top: 0;">🔧 Отладочная панель (только локальная установка)</h3>
   
@@ -44,55 +44,6 @@ http://example.com
     </div>
   </div>
   
-<div style="padding: 15px; background: white; border: 1px solid #ddd; border-radius: 4px;">
-  <h4 style="margin-top: 0;">Управление триал-периодом</h4>
-  
-  <!-- Добавляем блок с информацией о триале -->
-  <div id="debug-trial-info" style="margin-bottom: 15px; padding: 10px; background: #f8f9fa; border-radius: 4px; border-left: 4px solid #007bff;">
-    <div style="display: flex; justify-content: space-between; margin-bottom: 5px;">
-      <strong>Статус триала:</strong>
-      <span id="debug-trial-status" style="font-weight: bold;">Загрузка...</span>
-    </div>
-    <div style="display: flex; justify-content: space-between; margin-bottom: 5px;">
-      <strong>Дата установки:</strong>
-      <span id="debug-install-date">Загрузка...</span>
-    </div>
-    <div style="display: flex; justify-content: space-between; margin-bottom: 5px;">
-      <strong>Прошло времени:</strong>
-      <span id="debug-time-elapsed">Загрузка...</span>
-    </div>
-    <div style="display: flex; justify-content: space-between;">
-      <strong>Осталось триала:</strong>
-      <span id="debug-time-remaining">Загрузка...</span>
-    </div>
-  </div>
-  
-  <p>
-    <button id="debug-end-trial" class="danger" style="background: #ff5252; color: white; border: none; padding: 8px 15px; border-radius: 4px; cursor: pointer; margin-right: 10px;">Завершить триал сейчас</button>
-    <span class="note">Установит дату установки на 8 дней назад</span>
-  </p>
-  <p>
-    <button id="debug-reset-trial" style="padding: 8px 15px; border-radius: 4px; cursor: pointer; margin-right: 10px;">Сбросить триал</button>
-    <span class="note">Установит текущую дату как дату установки</span>
-  </p>
-  <p>
-    <button id="debug-set-custom-date" style="padding: 8px 15px; border-radius: 4px; cursor: pointer; margin-right: 10px;">Установить свою дату</button>
-    <span class="note">Установить произвольную дату установки</span>
-  </p>
-</div>
-    
-    <div style="padding: 15px; background: white; border: 1px solid #ddd; border-radius: 4px;">
-      <h4 style="margin-top: 0;">Тестирование Paywall</h4>
-      <p>
-        <button id="debug-test-paywall" style="padding: 8px 15px; border-radius: 4px; cursor: pointer;">Тест paywall.getUser()</button>
-        <span class="note">Проверит статус оплаты</span>
-      </p>
-      <p>
-        <button id="debug-open-paywall" style="padding: 8px 15px; border-radius: 4px; cursor: pointer;">Открыть Paywall</button>
-        <span class="note">Откроет страницу оплаты</span>
-      </p>
-    </div>
-    
     <div style="padding: 15px; background: white; border: 1px solid #ddd; border-radius: 4px;">
       <h4 style="margin-top: 0;">Управление данными</h4>
       <p>
