@@ -7,6 +7,7 @@ window.pointers.record = (element, name, value) => {
 };
 window.pointers.inject = code => chrome.runtime.sendMessage({ method: 'inject-unprotected', code });
 
+{
 const setEnabled = enabled => {
   if ((window.pointers.status === 'ready') === enabled) {
     return;
@@ -41,3 +42,4 @@ const setEnabled = enabled => {
 const target = window.__rightClickEnableTarget;
 delete window.__rightClickEnableTarget;
 setEnabled(typeof target === 'boolean' ? target : window.pointers.status !== 'ready');
+}
