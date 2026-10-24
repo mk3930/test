@@ -1,0 +1,1 @@
+(async function(){try{await window.paywall.open();}catch(error){console.log("paywall.open error: ",error);}})();
