@@ -32,7 +32,7 @@ const hasPermission = () => chrome.permissions.contains({
   chrome.runtime.onInstalled.addListener(callback);
 }
 
-chrome.contextMenus.onShown.addListener((info, tab) => {
+chrome.contextMenus.onShown?.addListener((info, tab) => {
   if (!info.menuIds.includes('exclude-site')) {
     return;
   }
@@ -48,7 +48,7 @@ chrome.contextMenus.onShown.addListener((info, tab) => {
     chrome.contextMenus.update('exclude-site', {
       checked: prefs.excludedHostnames.includes(hostname)
     });
-    chrome.contextMenus.refresh();
+    chrome.contextMenus.refresh?.();
   });
 });
 
